@@ -66,10 +66,10 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 
         let summaryItems = lineItemJson
         let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
-        let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
+        let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems as String,
                                                                 merchantIdentifier: merchantIdentifier)
         configuration.applePay = applePayConfiguration
-        dropInComponent = DropInComponent(paymentMethods: paymentMethods as String, paymentMethodsConfiguration: configuration)
+        dropInComponent = DropInComponent(paymentMethods: paymentMethods, paymentMethodsConfiguration: configuration)
         dropInComponent?.delegate = self
         dropInComponent?.environment = .test
 
