@@ -65,7 +65,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         configuration.clientKey = clientKey
 
         let summaryItems = [
-                         PKPaymentSummaryItem(label: "Labymod", amount: Int(amount), type: .final)
+                         PKPaymentSummaryItem(label: "Labymod", amount: Double(amount), type: .final)
                        ]
         let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
