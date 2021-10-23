@@ -25,7 +25,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
     var merchantAccount: String?
     var clientKey: String?
     var currency: String?
-    var amount: String?
+    var amount: String
     var returnUrl: String?
     var reference: String?
     var mResult: FlutterResult?
@@ -46,7 +46,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         additionalData = arguments?["additionalData"] as? [String: String]
         clientKey = arguments?["clientKey"] as? String
         currency = arguments?["currency"] as? String
-        amount = arguments?["amount"] as? String
+        amount = arguments?["amount"] as String
         lineItemJson = arguments?["lineItem"] as? [String: String]
         environment = arguments?["environment"] as? String
         reference = arguments?["reference"] as? String
@@ -66,9 +66,8 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 
         let formatter = NumberFormatter()
         formatter.generatesDecimalNumbers = true
-        let price = formatter.number(from: amount as String) as? NSDecimalNumber ?? 0;
         let summaryItems = [
-                         PKPaymentSummaryItem(label: "Labymod", amount: price, type: .final)
+                         PKPaymentSummaryItem(label: "Labymod", amount: amount, type: .final)
                        ]
         let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
