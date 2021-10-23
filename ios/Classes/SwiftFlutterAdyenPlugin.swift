@@ -3,6 +3,7 @@ import UIKit
 import Adyen
 import Adyen3DS2
 import Foundation
+import PassKit
 
 struct PaymentError: Error {
 
@@ -62,6 +63,18 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         let configuration = DropInComponent.PaymentMethodsConfiguration()
         configuration.card.showsHolderNameField = true
         configuration.clientKey = clientKey
+        //Submit the payment details here, including the amount, currency, and country code
+        let payment = Payment(amount: Amount(value: 15000, currencyCode: "EUR"),
+                          countryCode: "NL")
+        // A set of line items that explain recurring payments, additional charges, and discounts.
+        // See Apple Pay documentation for sample values.
+        // https://developer.apple.com/documentation/apple_pay_on_the_web/applepaypaymentrequest/1916120-lineitems
+        let summaryItems = lineItemJson
+        // See Apple Pay documentation https://docs.adyen.com/payment-methods/apple-pay/enable-apple-pay#create-merchant-identifier
+        let merchantIdentifier = "merchant.com.{YOUR_MERCHANT_IDENTIFIER}"
+        let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
+                                                                merchantIdentifier: merchantIdentifier)
+        configuration.applePay = applePayConfiguration
         dropInComponent = DropInComponent(paymentMethods: paymentMethods, paymentMethodsConfiguration: configuration)
         dropInComponent?.delegate = self
         dropInComponent?.environment = .test
