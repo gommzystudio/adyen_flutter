@@ -66,7 +66,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 
         let formatter = NumberFormatter()
         formatter.generatesDecimalNumbers = true
-        let price = formatter.number(from: amount) as? NSDecimalNumber ?? 0;
+        let price = formatter.number(from: amount as String) as? NSDecimalNumber ?? 0;
         let summaryItems = [
                          PKPaymentSummaryItem(label: "Labymod", amount: price, type: .final)
                        ]
