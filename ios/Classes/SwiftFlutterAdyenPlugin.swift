@@ -73,7 +73,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
                                                                 merchantIdentifier: merchantIdentifier)
-        configuration.applePay = applePayConfiguration as DropInComponent.PaymentMethodsConfiguration.ApplePayConfiguration
+        configuration.applePay = applePayConfiguration
         dropInComponent = DropInComponent(paymentMethods: paymentMethods, paymentMethodsConfiguration: configuration)
         dropInComponent?.delegate = self
         dropInComponent?.environment = .test
