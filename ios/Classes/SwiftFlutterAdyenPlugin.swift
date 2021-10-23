@@ -64,8 +64,11 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         configuration.card.showsHolderNameField = true
         configuration.clientKey = clientKey
 
+        let formatter = NumberFormatter()
+        formatter.generatesDecimalNumbers = true
+        let price = formatter.number(from: amount) as? NSDecimalNumber ?? 0;
         let summaryItems = [
-                         PKPaymentSummaryItem(label: "Labymod", amount: Double(amount), type: .final)
+                         PKPaymentSummaryItem(label: "Labymod", amount: price, type: .final)
                        ]
         let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
