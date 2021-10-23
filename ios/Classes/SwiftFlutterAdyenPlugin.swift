@@ -63,9 +63,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         let configuration = DropInComponent.PaymentMethodsConfiguration()
         configuration.card.showsHolderNameField = true
         configuration.clientKey = clientKey
-        //Submit the payment details here, including the amount, currency, and country code
-        let payment = Payment(amount: Amount(value: Int(amount), currencyCode: currency as? String),
-                          countryCode: shopperLocale as? String)
+
         let summaryItems = lineItemJson
         let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
