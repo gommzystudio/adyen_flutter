@@ -3,7 +3,6 @@ import UIKit
 import Adyen
 import Adyen3DS2
 import Foundation
-import PassKit
 
 struct PaymentError: Error {
 
@@ -60,31 +59,20 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
             return
         }
 
-        let configuration = DropInComponent.PaymentMethodsConfiguration()
-        configuration.card.showsHolderNameField = true
-        configuration.clientKey = clientKey
-
-        let formatter = NumberFormatter()
-        formatter.generatesDecimalNumbers = true
-        let price = formatter.number(from: (amount! as String)) as? NSDecimalNumber ?? 0;
-        let summaryItems = [
-                         PKPaymentSummaryItem(label: "Labymod", amount: price, type: .final)
-                       ]
-        let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
-        let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
-                                                                merchantIdentifier: merchantIdentifier)
-        configuration.applePay = applePayConfiguration
-        dropInComponent = DropInComponent(paymentMethods: paymentMethods, paymentMethodsConfiguration: configuration)
-        dropInComponent?.delegate = self
-        dropInComponent?.environment = .test
+        var apiContext = APIContext(environment: Environment.test, clientKey: clientKey!)
 
         if(environment == "LIVE_US") {
-            dropInComponent?.environment = .liveUnitedStates
+            apiContext = APIContext(environment: Environment.liveUnitedStates, clientKey: clientKey!)
         } else if (environment == "LIVE_AUSTRALIA"){
-            dropInComponent?.environment = .liveAustralia
+            apiContext = APIContext(environment: Environment.liveAustralia, clientKey: clientKey!)
         } else if (environment == "LIVE_EUROPE"){
-            dropInComponent?.environment = .liveEurope
+            apiContext = APIContext(environment: Environment.liveEurope, clientKey: clientKey!)
         }
+        
+        let dropInConfiguration = DropInComponent.Configuration(apiContext: apiContext)
+        dropInConfiguration.card.showsHolderNameField = true
+        dropInComponent = DropInComponent(paymentMethods: paymentMethods, configuration: dropInConfiguration)
+        dropInComponent?.delegate = self
 
 
         if var topController = UIApplication.shared.keyWindow?.rootViewController, let dropIn = dropInComponent {
@@ -98,12 +86,16 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 }
 
 extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
+    public func didComplete(from component: DropInComponent) {
+        
+    }
+    
 
     public func didCancel(component: PresentableComponent, from dropInComponent: DropInComponent) {
         self.didFail(with: PaymentCancelled(), from: dropInComponent)
     }
 
-    public func didSubmit(_ data: PaymentComponentData, from component: DropInComponent) {
+    public func didSubmit(_ data: PaymentComponentData, for paymentMethod: PaymentMethod, from component: DropInComponent) {
         guard let baseURL = baseURL, let url = URL(string: baseURL + "payments") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -140,28 +132,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     func finish(data: Data, component: DropInComponent) {
-        DispatchQueue.main.async {
-            guard let response = try? JSONDecoder().decode(PaymentsResponse.self, from: data) else {
-                self.didFail(with: PaymentError(), from: component)
-                return
-            }
-            if let action = response.action {
-                component.stopLoading()
-                component.handle(action)
-            } else {
-                component.stopLoading()
-                if response.resultCode == .authorised || response.resultCode == .received || response.resultCode == .pending, let result = self.mResult {
-                    result(response.resultCode.rawValue)
-                    self.topController?.dismiss(animated: false, completion: nil)
-
-                } else if (response.resultCode == .error || response.resultCode == .refused) {
-                    self.didFail(with: PaymentError(), from: component)
-                }
-                else {
-                    self.didFail(with: PaymentCancelled(), from: component)
-                }
-            }
-        }
+       
     }
 
     public func didProvide(_ data: ActionComponentData, from component: DropInComponent) {
@@ -247,7 +218,7 @@ struct Amount: Codable {
     let value: Int
 }
 
-internal struct PaymentsResponse: Response {
+internal struct PaymentsResponse {
 
     internal let resultCode: ResultCode
 
