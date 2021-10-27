@@ -132,7 +132,28 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     func finish(data: Data, component: DropInComponent) {
-       
+        DispatchQueue.main.async {
+                    guard let response = try? JSONDecoder().decode(PaymentsResponse.self, from: data) else {
+                        self.didFail(with: PaymentError(), from: component)
+                        return
+                    }
+                    if let action = response.action {
+                        component.stopLoadingIfNeeded()
+                        component.handle(action)
+                    } else {
+                        component.stopLoadingIfNeeded()
+                        if response.resultCode == .authorised || response.resultCode == .received || response.resultCode == .pending, let result = self.mResult {
+                            result(response.resultCode.rawValue)
+                            self.topController?.dismiss(animated: false, completion: nil)
+
+                        } else if (response.resultCode == .error || response.resultCode == .refused) {
+                            self.didFail(with: PaymentError(), from: component)
+                        }
+                        else {
+                            self.didFail(with: PaymentCancelled(), from: component)
+                        }
+                    }
+                }
     }
 
     public func didProvide(_ data: ActionComponentData, from component: DropInComponent) {
@@ -218,7 +239,7 @@ struct Amount: Codable {
     let value: Int
 }
 
-internal struct PaymentsResponse {
+internal struct PaymentsResponse: Decodable {
 
     internal let resultCode: ResultCode
 
