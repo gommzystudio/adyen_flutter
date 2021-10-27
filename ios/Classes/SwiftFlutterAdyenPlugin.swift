@@ -37,6 +37,8 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        println("Payement: Create Droping");
+        
         guard call.method.elementsEqual("openDropIn") else { return }
 
         let arguments = call.arguments as? [String: Any]
@@ -96,6 +98,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     public func didSubmit(_ data: PaymentComponentData, for paymentMethod: PaymentMethod, from component: DropInComponent) {
+        println("Payement: didSubmit");
         guard let baseURL = baseURL, let url = URL(string: baseURL + "payments") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -132,6 +135,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     func finish(data: Data, component: DropInComponent) {
+        println("Payement: finsih");
         DispatchQueue.main.async {
                     guard let response = try? JSONDecoder().decode(PaymentsResponse.self, from: data) else {
                         self.didFail(with: PaymentError(), from: component)
@@ -157,6 +161,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     public func didProvide(_ data: ActionComponentData, from component: DropInComponent) {
+        println("Payement: didProvide");
         guard let baseURL = baseURL, let url = URL(string: baseURL + "payments/details") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -182,7 +187,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     public func didFail(with error: Error, from component: DropInComponent) {
-
+        println("Payement: didFail");
         DispatchQueue.main.async {
             if (error is PaymentCancelled) {
                 self.mResult?("PAYMENT_CANCELLED")
