@@ -4,6 +4,10 @@ import Adyen
 import Adyen3DS2
 import Foundation
 
+// Import this to use the PKPaymentSummaryItem class
+// See documentation https://developer.apple.com/documentation/passkit/pkpaymentsummaryitem
+import PassKit
+
 struct PaymentError: Error {
 
 }
@@ -73,10 +77,31 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         
         let dropInConfiguration = DropInComponent.Configuration(apiContext: apiContext)
         dropInConfiguration.card.showsHolderNameField = true
+        
+        
+        let formatter = NumberFormatter()
+        formatter.generatesDecimalNumbers = true
+        let price = formatter.number(from: amount!) as? NSDecimalNumber ?? 0;
+        
+
+        // A set of line items that explain recurring payments, additional charges, and discounts.
+        // See Apple Pay documentation for sample values.
+        // https://developer.apple.com/documentation/apple_pay_on_the_web/applepaypaymentrequest/1916120-lineitems
+        let summaryItems = [
+            PKPaymentSummaryItem(label: "LabyMod", amount: price, type: .final)
+                       ]
+        // See Apple Pay documentation https://docs.adyen.com/payment-methods/apple-pay/enable-apple-pay#create-merchant-identifier
+        let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
+        let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
+                                                                merchantIdentifier: merchantIdentifier)
+        dropInConfiguration.applePay = applePayConfiguration
+
+        
+        
+
         dropInComponent = DropInComponent(paymentMethods: paymentMethods, configuration: dropInConfiguration)
         dropInComponent?.delegate = self
-
-
+        
         if var topController = UIApplication.shared.keyWindow?.rootViewController, let dropIn = dropInComponent {
             self.topController = topController
             while let presentedViewController = topController.presentedViewController{
@@ -90,11 +115,6 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     public func didComplete(from component: DropInComponent) {
         
-    }
-    
-
-    public func didCancel(component: PresentableComponent, from dropInComponent: DropInComponent) {
-        self.didFail(with: PaymentCancelled(), from: dropInComponent)
     }
 
     public func didSubmit(_ data: PaymentComponentData, for paymentMethod: PaymentMethod, from component: DropInComponent) {
