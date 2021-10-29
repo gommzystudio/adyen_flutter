@@ -37,6 +37,7 @@ class _MyAppState extends State<MyApp> {
                   amount: '1230',
                   lineItem: {'id': '1', 'description': 'adyen test'},
                   currency: 'EUR',
+                  applePay: 'test',
                   additionalData: {});
             } on PlatformException catch (e) {
               if (e.code == 'PAYMENT_CANCELLED')
