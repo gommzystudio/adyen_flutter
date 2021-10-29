@@ -15,6 +15,7 @@ class FlutterAdyen {
       String amount,
       String currency,
       String returnUrl,
+      String applePay,
       String shopperReference,
       Map<String, String> additionalData,
       environment = 'TEST'}) async {

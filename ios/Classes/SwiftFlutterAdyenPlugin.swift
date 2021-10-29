@@ -31,6 +31,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
     var amount: String?
     var returnUrl: String?
     var reference: String?
+    var applePay: String?
     var mResult: FlutterResult?
     var topController: UIViewController?
     var environment: String?
@@ -55,6 +56,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         lineItemJson = arguments?["lineItem"] as? [String: String]
         environment = arguments?["environment"] as? String
         reference = arguments?["reference"] as? String
+        applePay = arguments?["applePay"] as? String
         returnUrl = arguments?["returnUrl"] as? String
         shopperReference = arguments?["shopperReference"] as? String
         shopperLocale = String((arguments?["locale"] as? String)?.split(separator: "_").last ?? "DE")
@@ -91,9 +93,8 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
             PKPaymentSummaryItem(label: "LabyMod", amount: price, type: .final)
                        ]
         // See Apple Pay documentation https://docs.adyen.com/payment-methods/apple-pay/enable-apple-pay#create-merchant-identifier
-        let merchantIdentifier = "merchant.com.adyen.LabyMediaGmbH"
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
-                                                                merchantIdentifier: merchantIdentifier)
+                                                                merchantIdentifier: applePay!)
         dropInConfiguration.applePay = applePayConfiguration
 
         
