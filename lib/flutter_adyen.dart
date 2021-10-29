@@ -28,6 +28,7 @@ class FlutterAdyen {
     args.putIfAbsent('amount', () => amount);
     args.putIfAbsent('locale', () => locale);
     args.putIfAbsent('currency', () => currency);
+    args.putIfAbsent('applePay', () => applePay);
     args.putIfAbsent('lineItem', () => lineItem);
     args.putIfAbsent('returnUrl', () => returnUrl);
     args.putIfAbsent('environment', () => environment);
