@@ -97,10 +97,8 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
                                                                 merchantIdentifier: applePay!)
         dropInConfiguration.applePay = applePayConfiguration
 
-        
-        
-
         dropInComponent = DropInComponent(paymentMethods: paymentMethods, configuration: dropInConfiguration)
+        dropInComponent?.finalizeIfNeeded(with: true)
         dropInComponent?.delegate = self
         
         if var topController = UIApplication.shared.keyWindow?.rootViewController, let dropIn = dropInComponent {
@@ -115,7 +113,8 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 
 extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     public func didComplete(from component: DropInComponent) {
-        
+        print("Payement: complete");
+        self.topController?.dismiss(animated: true, completion: nil);
     }
 
     public func didSubmit(_ data: PaymentComponentData, for paymentMethod: PaymentMethod, from component: DropInComponent) {
@@ -156,25 +155,28 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     func finish(data: Data, component: DropInComponent) {
-        print("Payement: finsih");
         DispatchQueue.main.async {
                     guard let response = try? JSONDecoder().decode(PaymentsResponse.self, from: data) else {
+                        print("Payement: finish #1");
                         self.didFail(with: PaymentError(), from: component)
                         return
                     }
                     if let action = response.action {
+                        print("Payement: finish #2");
                         component.stopLoadingIfNeeded()
                         component.handle(action)
                     } else {
                         component.stopLoadingIfNeeded()
                         if response.resultCode == .authorised || response.resultCode == .received || response.resultCode == .pending, let result = self.mResult {
+                            print("Payement: finish #3");
                             result(response.resultCode.rawValue)
                             self.topController?.dismiss(animated: false, completion: nil)
-
                         } else if (response.resultCode == .error || response.resultCode == .refused) {
+                            print("Payement: finish #4");
                             self.didFail(with: PaymentError(), from: component)
                         }
                         else {
+                            print("Payement: finish #5");
                             self.didFail(with: PaymentCancelled(), from: component)
                         }
                     }
