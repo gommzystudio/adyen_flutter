@@ -36,7 +36,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
     var lineItemJson: [String: String]?
     var shopperLocale: String?
     var additionalData: [String: String]?
-    var country: String?
+    var shopperCountry: String?
 
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
