@@ -3,9 +3,6 @@ import UIKit
 import Adyen
 import Adyen3DS2
 import Foundation
-
-// Import this to use the PKPaymentSummaryItem class
-// See documentation https://developer.apple.com/documentation/passkit/pkpaymentsummaryitem
 import PassKit
 
 struct PaymentError: Error {
@@ -28,7 +25,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
     var merchantAccount: String?
     var clientKey: String?
     var currency: String?
-    var amount: String?
+    var amount: Int?
     var returnUrl: String?
     var reference: String?
     var applePay: String?
@@ -38,11 +35,12 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
     var shopperReference: String?
     var lineItemJson: [String: String]?
     var shopperLocale: String?
-    var additionalData:  [String: String]?
+    var additionalData: [String: String]?
+    var country: String?
 
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        print("Payement: Create Droping");
+        print("Payment: Create Droping");
         
         guard call.method.elementsEqual("openDropIn") else { return }
 
@@ -52,7 +50,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         additionalData = arguments?["additionalData"] as? [String: String]
         clientKey = arguments?["clientKey"] as? String
         currency = arguments?["currency"] as? String
-        amount = arguments?["amount"] as? String
+        amount = Int((arguments?["amount"] as? String)!)
         lineItemJson = arguments?["lineItem"] as? [String: String]
         environment = arguments?["environment"] as? String
         reference = arguments?["reference"] as? String
@@ -60,6 +58,7 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         returnUrl = arguments?["returnUrl"] as? String
         shopperReference = arguments?["shopperReference"] as? String
         shopperLocale = String((arguments?["locale"] as? String)?.split(separator: "_").last ?? "DE")
+        shopperCountry = arguments?["country"] as? String
         mResult = result
 
         guard let paymentData = paymentMethodsResponse?.data(using: .utf8),
@@ -83,19 +82,23 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
         
         let formatter = NumberFormatter()
         formatter.generatesDecimalNumbers = true
-        let price = formatter.number(from: amount!) as? NSDecimalNumber ?? 0;
-        
+        let price = NSDecimalNumber(value: amount! / 100)
 
         // A set of line items that explain recurring payments, additional charges, and discounts.
         // See Apple Pay documentation for sample values.
         // https://developer.apple.com/documentation/apple_pay_on_the_web/applepaypaymentrequest/1916120-lineitems
         let summaryItems = [
             PKPaymentSummaryItem(label: "LabyMod", amount: price, type: .final)
-                       ]
+        ]
         // See Apple Pay documentation https://docs.adyen.com/payment-methods/apple-pay/enable-apple-pay#create-merchant-identifier
         let applePayConfiguration = ApplePayComponent.Configuration(summaryItems: summaryItems,
                                                                 merchantIdentifier: applePay!)
         dropInConfiguration.applePay = applePayConfiguration
+        let payment = Payment(
+            amount: Adyen.Amount(value: amount!, currencyCode: currency!, localeIdentifier: shopperLocale!),
+            countryCode: shopperCountry!
+        )
+        dropInConfiguration.payment = payment
 
         dropInComponent = DropInComponent(paymentMethods: paymentMethods, configuration: dropInConfiguration)
         dropInComponent?.finalizeIfNeeded(with: true)
@@ -113,18 +116,17 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
 
 extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     public func didComplete(from component: DropInComponent) {
-        print("Payement: complete");
+        print("Payment: complete");
         self.topController?.dismiss(animated: true, completion: nil);
     }
 
     public func didSubmit(_ data: PaymentComponentData, for paymentMethod: PaymentMethod, from component: DropInComponent) {
-        print("Payement: didSubmit");
+        print("Payment: didSubmit");
         guard let baseURL = baseURL, let url = URL(string: baseURL + "payments") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let amountAsInt = Int(amount ?? "0")
+        
         // prepare json data
         let paymentMethod = data.paymentMethod.encodable
         let lineItem = try? JSONDecoder().decode(LineItem.self, from: JSONSerialization.data(withJSONObject: lineItemJson ?? ["":""]) )
@@ -132,7 +134,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
             self.didFail(with: PaymentError(), from: component)
             return
         }
-        let paymentRequest = PaymentRequest(payment: Payment( paymentMethod: paymentMethod, lineItem: lineItem ?? LineItem(id: "", description: ""), currency: currency ?? "", amount: amountAsInt ?? 0, returnUrl: returnUrl ?? "", storePayment: data.storePaymentMethod, shopperReference: shopperReference, countryCode: shopperLocale), additionalData:additionalData ?? [String: String]())
+        let paymentRequest = PaymentRequest(payment: AdyenPayment( paymentMethod: paymentMethod, lineItem: lineItem ?? LineItem(id: "", description: ""), currency: currency ?? "", amount: amount!, returnUrl: returnUrl ?? "", storePayment: data.storePaymentMethod, shopperReference: shopperReference, countryCode: shopperLocale), additionalData:additionalData ?? [String: String]())
 
         do {
             let jsonData = try JSONEncoder().encode(paymentRequest)
@@ -184,7 +186,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     public func didProvide(_ data: ActionComponentData, from component: DropInComponent) {
-        print("Payement: didProvide");
+        print("Payment: didProvide");
         guard let baseURL = baseURL, let url = URL(string: baseURL + "payments/details") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -210,7 +212,7 @@ extension SwiftFlutterAdyenPlugin: DropInComponentDelegate {
     }
 
     public func didFail(with error: Error, from component: DropInComponent) {
-        print("Payement: didFail");
+        print("Payment: didFail");
         DispatchQueue.main.async {
             if (error is PaymentCancelled) {
                 self.mResult?("PAYMENT_CANCELLED")
@@ -230,11 +232,11 @@ struct DetailsRequest: Encodable {
 }
 
 struct PaymentRequest : Encodable {
-    let payment: Payment
+    let payment: AdyenPayment
     let additionalData: [String: String]
 }
 
-struct Payment : Encodable {
+struct AdyenPayment : Encodable {
     let paymentMethod: AnyEncodable
     let lineItems: [LineItem]
     let channel: String = "iOS"
