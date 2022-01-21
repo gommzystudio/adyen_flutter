@@ -81,7 +81,11 @@ public class SwiftFlutterAdyenPlugin: NSObject, FlutterPlugin {
     // A set of line items that explain recurring payments, additional charges, and discounts.
     // https://developer.apple.com/documentation/apple_pay_on_the_web/applepaypaymentrequest/1916120-lineitems
     let summaryItems = [
-        PKPaymentSummaryItem(label: lineItemJson!["description"] ?? "Product", amount: NSDecimalNumber.init(value: amount! / 100), type: .final)
+        PKPaymentSummaryItem(
+            label: lineItemJson!["description"] ?? "Product",
+            amount: NSDecimalNumber.init(value: amount!).dividing(by: 100),
+            type: .final
+        )
     ]
 
     // See Apple Pay documentation https://docs.adyen.com/payment-methods/apple-pay/enable-apple-pay#create-merchant-identifier
