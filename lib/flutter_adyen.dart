@@ -13,6 +13,7 @@ class FlutterAdyen {
       lineItem,
       required String locale,
       required String country,
+      required String reference,
       required String amount,
       required String currency,
       required String returnUrl,
@@ -26,6 +27,7 @@ class FlutterAdyen {
     args.putIfAbsent('baseUrl', () => baseUrl);
     args.putIfAbsent('clientKey', () => clientKey);
     args.putIfAbsent('publicKey', () => publicKey);
+    args.putIfAbsent('reference', () => reference);
     args.putIfAbsent('amount', () => amount);
     args.putIfAbsent('country', () => country);
     args.putIfAbsent('locale', () => locale);
