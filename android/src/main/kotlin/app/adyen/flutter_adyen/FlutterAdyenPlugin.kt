@@ -26,7 +26,10 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
-import io.flutter.plugin.common.PluginRegistry.Registrar
+import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
+import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import java.util.UUID
 import okhttp3.MediaType
 import okhttp3.RequestBody
@@ -36,17 +39,37 @@ import java.io.Serializable
 import com.google.gson.reflect.TypeToken;
 
 
-class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, PluginRegistry.ActivityResultListener {
+class FlutterAdyenPlugin() : FlutterPlugin, MethodCallHandler, ActivityAware, ActivityResultListener {
     var flutterResult: Result? = null
+    private lateinit var activity: Activity
+    private var activityPluginBinding: ActivityPluginBinding? = null
 
-    companion object {
-        @JvmStatic
-        fun registerWith(registrar: Registrar) {
-            val channel = MethodChannel(registrar.messenger(), "flutter_adyen")
-            val plugin = FlutterAdyenPlugin(registrar.activity())
-            channel.setMethodCallHandler(plugin)
-            registrar.addActivityResultListener(plugin)
-        }
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        val channel = MethodChannel(binding.binaryMessenger, "flutter_adyen")
+        channel.setMethodCallHandler(this)
+    }
+
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        this.activityPluginBinding = binding
+        this.activity = binding.activity;
+        binding.addActivityResultListener(this)
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        this.activity = binding.activity
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+
+    }
+
+    override fun onDetachedFromActivity() {
+        this.activityPluginBinding?.removeActivityResultListener(this)
+        this.activityPluginBinding = null
     }
 
     override fun onMethodCall(call: MethodCall, res: Result) {
@@ -84,17 +107,17 @@ class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, Pl
                     val jsonObject = JSONObject(paymentMethods ?: "")
                     val paymentMethodsApiResponse = PaymentMethodsApiResponse.SERIALIZER.deserialize(jsonObject)
                     val shopperLocale = LocaleUtil.fromLanguageTag(localeString ?: "")
-                    val cardConfiguration = CardConfiguration.Builder(activity)
+                    val cardConfiguration = CardConfiguration.Builder(this.activity)
                             .setHolderNameRequire(true)
                             .setPublicKey(publicKey ?: "")
                             .setShopperLocale(shopperLocale)
                             .setEnvironment(environment)
                             .build()
 
-                    val resultIntent = Intent(activity, activity::class.java)
+                    val resultIntent = Intent(this.activity, this.activity::class.java)
                     resultIntent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
 
-                    val sharedPref = activity.getSharedPreferences("ADYEN", Context.MODE_PRIVATE)
+                    val sharedPref = this.activity.getSharedPreferences("ADYEN", Context.MODE_PRIVATE)
                     with(sharedPref.edit()) {
                         remove("AdyenResultCode")
                         putString("baseUrl", baseUrl)
@@ -107,23 +130,22 @@ class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, Pl
                         commit()
                     }
 
-                    val googlePayConfig = GooglePayConfiguration.Builder(activity, clientKey ?: "")
+                    val googlePayConfig = GooglePayConfiguration.Builder(this.activity, clientKey ?: "")
                         .setAmount(getAmount(amount ?: "", currency ?: "EUR"))
                         .setEnvironment(environment)
                         .build()
 
-                    val dropInConfiguration = DropInConfiguration.Builder(activity, resultIntent, AdyenDropinService::class.java)
+                    val dropInConfiguration = DropInConfiguration.Builder(this.activity, resultIntent, AdyenDropinService::class.java)
                             .setClientKey(clientKey ?: "")
+                            .setAmount(getAmount(amount ?: "", currency ?: "EUR"))
                             .addCardConfiguration(cardConfiguration)
                             .addGooglePayConfiguration(googlePayConfig)
                             .build()
-                    DropIn.startPayment(activity, paymentMethodsApiResponse, dropInConfiguration)
+                    DropIn.startPayment(this.activity, paymentMethodsApiResponse, dropInConfiguration)
                     flutterResult = res
                 } catch (e: Throwable) {
                     res.error("PAYMENT_ERROR", "${e.printStackTrace()}", "")
                 }
-
-
             }
             else -> {
                 res.notImplemented()
@@ -132,13 +154,12 @@ class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, Pl
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        val sharedPref = activity.getSharedPreferences("ADYEN", Context.MODE_PRIVATE)
+        val sharedPref = this.activity.getSharedPreferences("ADYEN", Context.MODE_PRIVATE)
         val storedResultCode = sharedPref.getString("AdyenResultCode", "PAYMENT_CANCELLED")
         flutterResult?.success(storedResultCode)
         flutterResult = null;
         return true
     }
-
 }
 
 /**
