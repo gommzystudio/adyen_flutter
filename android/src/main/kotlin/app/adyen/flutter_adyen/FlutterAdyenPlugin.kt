@@ -17,6 +17,7 @@ import com.adyen.checkout.dropin.DropInConfiguration
 import com.adyen.checkout.dropin.service.CallResult
 import com.adyen.checkout.dropin.service.DropInService
 import com.adyen.checkout.redirect.RedirectComponent
+import com.adyen.checkout.googlepay.GooglePayConfiguration
 import com.google.gson.Gson
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
@@ -62,12 +63,13 @@ class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, Pl
                 val env = call.argument<String>("environment")
                 val lineItem = call.argument<Map<String, String>>("lineItem")
                 val shopperReference = call.argument<String>("shopperReference")
+                val country = call.argument<String>("country")
+                val reference = call.argument<String>("reference")
 
                 @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
                 val lineItemString = JSONObject(lineItem).toString()
                 val additionalDataString = JSONObject(additionalData).toString()
                 val localeString = call.argument<String>("locale") ?: "de_DE"
-                val countryCode = localeString.split("_").last()
 
                 var environment = Environment.TEST
                 if (env == "LIVE_US") {
@@ -97,7 +99,7 @@ class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, Pl
                         remove("AdyenResultCode")
                         putString("baseUrl", baseUrl)
                         putString("amount", "$amount")
-                        putString("countryCode", countryCode)
+                        putString("countryCode", country)
                         putString("currency", currency)
                         putString("lineItem", lineItemString)
                         putString("additionalData", additionalDataString)
@@ -105,9 +107,15 @@ class FlutterAdyenPlugin(private val activity: Activity) : MethodCallHandler, Pl
                         commit()
                     }
 
+                    val googlePayConfig = GooglePayConfiguration.Builder(activity, clientKey ?: "")
+                        .setAmount(getAmount(amount ?: "", currency ?: "EUR"))
+                        .setEnvironment(environment)
+                        .build()
+
                     val dropInConfiguration = DropInConfiguration.Builder(activity, resultIntent, AdyenDropinService::class.java)
                             .setClientKey(clientKey ?: "")
                             .addCardConfiguration(cardConfiguration)
+                            .addGooglePayConfiguration(googlePayConfig)
                             .build()
                     DropIn.startPayment(activity, paymentMethodsApiResponse, dropInConfiguration)
                     flutterResult = res
@@ -151,11 +159,11 @@ class AdyenDropinService : DropInService() {
         val baseUrl = sharedPref.getString("baseUrl", "UNDEFINED_STR")
         val amount = sharedPref.getString("amount", "UNDEFINED_STR")
         val currency = sharedPref.getString("currency", "UNDEFINED_STR")
-        val countryCode = sharedPref.getString("countryCode", "DE")
+        val country = sharedPref.getString("country", "DE")
         val lineItemString = sharedPref.getString("lineItem", "UNDEFINED_STR")
         val additionalDataString = sharedPref.getString("additionalData", "UNDEFINED_STR")
         val uuid: UUID = UUID.randomUUID()
-        val reference: String = uuid.toString()
+        val reference: String = sharedPref.getString("reference", null) ?: uuid.toString()
         val shopperReference = sharedPref.getString("shopperReference", null)
 
         val moshi = Moshi.Builder().build()
@@ -172,7 +180,7 @@ class AdyenDropinService : DropInService() {
 
         val paymentsRequest = createPaymentsRequest(this@AdyenDropinService, lineItem, serializedPaymentComponentData, amount
                 ?: "", currency ?: "", reference
-                ?: "", shopperReference = shopperReference, countryCode = countryCode
+                ?: "", shopperReference = shopperReference, countryCode = country
                 ?: "DE", additionalData = additionalData)
         val paymentsRequestJson = serializePaymentsRequest(paymentsRequest)
 
